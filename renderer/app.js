@@ -265,6 +265,7 @@ function addMarker(lat, lng, options = {}) {
     const isFirst = markers.length === 0;
     const isLast = options.isLast || false;
     const time = options.time || null;
+    const index = markers.length + 1;
     
     let color, borderColor;
     if (isFirst) {
@@ -288,20 +289,21 @@ function addMarker(lat, lng, options = {}) {
     }).addTo(markerGroup);
     
     const type = isFirst ? '起点' : (isLast ? '终点' : '途经点');
-    const timeInfo = time ? `<br>时间: ${time}` : '';
-    marker.bindPopup(`<strong>${type} #${markers.length + 1}</strong><br>纬度: ${lat.toFixed(6)}<br>经度: ${lng.toFixed(6)}${timeInfo}`);
     
-    // 如果有时间，添加标签显示
-    if (time) {
-        const label = L.divIcon({
-            className: 'time-label',
-            html: `<div style="background: rgba(255,255,255,0.9); padding: 2px 6px; border-radius: 3px; font-size: 10px; white-space: nowrap; border: 1px solid #ccc;">${time}</div>`,
-            iconSize: null,
-            iconAnchor: [0, -10]
-        });
-        const labelMarker = L.marker([lat, lng], { icon: label, interactive: false }).addTo(markerGroup);
-        markers.push(labelMarker);
-    }
+    // 只在点击时显示时间和详细信息
+    marker.on('click', function() {
+        const timeInfo = time ? `<br><strong>时间:</strong> ${time}` : '';
+        const popupContent = `
+            <div style="font-size: 13px; line-height: 1.6;">
+                <strong style="color: #2c3e50; font-size: 14px;">${type} #${index}</strong>
+                <hr style="margin: 8px 0; border: none; border-top: 1px solid #eee;">
+                <strong>纬度:</strong> ${lat.toFixed(6)}<br>
+                <strong>经度:</strong> ${lng.toFixed(6)}
+                ${timeInfo}
+            </div>
+        `;
+        this.bindPopup(popupContent).openPopup();
+    });
     
     markers.push(marker);
     return marker;

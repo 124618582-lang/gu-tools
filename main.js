@@ -7,7 +7,7 @@ const initSqlJs = require('sql.js');
 let mainWindow;
 
 // 当前版本
-const CURRENT_VERSION = '1.3.0';
+const CURRENT_VERSION = '1.4.0';
 // 更新检查地址
 const UPDATE_URL = 'https://raw.githubusercontent.com/124618582-lang/gu-tools/main/version.json';
 // GitHub Releases 页面
