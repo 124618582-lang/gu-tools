@@ -1,0 +1,56 @@
+#!/bin/bash
+# GPS 可视化工具 - GitHub 发布指南
+
+echo "=========================================="
+echo "GPS 可视化工具 - GitHub 发布步骤"
+echo "=========================================="
+echo ""
+
+echo "步骤 1: 安装 GitHub CLI"
+echo "------------------------------------------"
+echo "已安装: gh version"
+gh --version
+echo ""
+
+echo "步骤 2: 登录 GitHub"
+echo "------------------------------------------"
+echo "请运行: gh auth login"
+echo "选择: HTTPS → Y → Login with a web browser"
+echo "按提示完成登录"
+echo ""
+
+echo "步骤 3: 创建仓库并推送"
+echo "------------------------------------------"
+echo "cd /Users/gukanjian/.openclaw/workspace/gps-visualizer-electron"
+echo "gh repo create gu-tools --public --source=. --push"
+echo ""
+
+echo "或者手动方式:"
+echo "------------------------------------------"
+echo "1. 访问 https://github.com/new"
+echo "2. 仓库名: gu-tools"
+echo "3. 描述: 顾侃健工具箱 - GPS可视化等工具"
+echo "4. 选择 Public"
+echo "5. 点击 Create repository"
+echo ""
+echo "然后运行:"
+echo "cd /Users/gukanjian/.openclaw/workspace/gps-visualizer-electron"
+echo "git remote remove origin 2>/dev/null; git remote add origin https://github.com/gukanjian/gu-tools.git"
+echo "git push -u origin main"
+echo ""
+
+echo "步骤 4: 创建 Release"
+echo "------------------------------------------"
+echo "1. 访问 https://github.com/gukanjian/gu-tools"
+echo "2. 点击 Releases → Create a new release"
+echo "3. 标签: v1.0.0"
+echo "4. 标题: GPS 可视化工具 v1.0.0"
+echo "5. 上传文件:"
+echo "   - /Users/gukanjian/Desktop/GPS 可视化工具-1.0.0-arm64.dmg"
+echo "   - /Users/gukanjian/.openclaw/workspace/gps-visualizer-electron/dist/GPS 可视化工具 Setup 1.0.0.exe"
+echo "6. 点击 Publish release"
+echo ""
+
+echo "=========================================="
+echo "完成后，应用就可以自动检查更新了！"
+echo "=========================================="

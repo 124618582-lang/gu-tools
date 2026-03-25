@@ -264,6 +264,7 @@ function addMultiple() {
 function addMarker(lat, lng, options = {}) {
     const isFirst = markers.length === 0;
     const isLast = options.isLast || false;
+    const time = options.time || null;
     
     let color, borderColor;
     if (isFirst) {
@@ -287,7 +288,20 @@ function addMarker(lat, lng, options = {}) {
     }).addTo(markerGroup);
     
     const type = isFirst ? '起点' : (isLast ? '终点' : '途经点');
-    marker.bindPopup(`<strong>${type} #${markers.length + 1}</strong><br>纬度: ${lat.toFixed(6)}<br>经度: ${lng.toFixed(6)}`);
+    const timeInfo = time ? `<br>时间: ${time}` : '';
+    marker.bindPopup(`<strong>${type} #${markers.length + 1}</strong><br>纬度: ${lat.toFixed(6)}<br>经度: ${lng.toFixed(6)}${timeInfo}`);
+    
+    // 如果有时间，添加标签显示
+    if (time) {
+        const label = L.divIcon({
+            className: 'time-label',
+            html: `<div style="background: rgba(255,255,255,0.9); padding: 2px 6px; border-radius: 3px; font-size: 10px; white-space: nowrap; border: 1px solid #ccc;">${time}</div>`,
+            iconSize: null,
+            iconAnchor: [0, -10]
+        });
+        const labelMarker = L.marker([lat, lng], { icon: label, interactive: false }).addTo(markerGroup);
+        markers.push(labelMarker);
+    }
     
     markers.push(marker);
     return marker;
@@ -296,9 +310,12 @@ function addMarker(lat, lng, options = {}) {
 // 添加轨迹
 function addTrack(coords) {
     if (coords.length === 0) return;
-    
+
     coords.forEach((coord, index) => {
-        addMarker(coord.lat, coord.lng, { isLast: index === coords.length - 1 });
+        addMarker(coord.lat, coord.lng, {
+            isLast: index === coords.length - 1,
+            time: coord.time
+        });
     });
     
     // 画轨迹线 - 醒目蓝色

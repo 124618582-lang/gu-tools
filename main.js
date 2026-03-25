@@ -7,7 +7,7 @@ const initSqlJs = require('sql.js');
 let mainWindow;
 
 // 当前版本
-const CURRENT_VERSION = '1.0.0';
+const CURRENT_VERSION = '1.1.0';
 // 更新检查地址 - 使用 GitHub Raw
 const UPDATE_URL = 'https://raw.githubusercontent.com/gukanjian/gu-tools/main/version.json';
 // GitHub Releases 页面
@@ -275,11 +275,11 @@ app.whenReady().then(async () => {
         return { success: false, error: '未找到包含 GPS 数据的表' };
       }
       
-      // 找经纬度列
+      // 找经纬度列和时间列
       const info = db.exec(`PRAGMA table_info("${bestTable}")`);
       const columns = info[0].values;
       
-      let latCol = null, lngCol = null;
+      let latCol = null, lngCol = null, timeCol = null;
       
       for (const col of columns) {
         const name = col[1].toLowerCase();
@@ -287,6 +287,8 @@ app.whenReady().then(async () => {
           latCol = col[1];
         } else if (name.includes('longitude') || name === 'lng' || name === 'lon' || name.includes('经度')) {
           lngCol = col[1];
+        } else if (name.includes('time') || name.includes('date') || name.includes('时间') || name.includes('日期') || name.includes('collecttime')) {
+          timeCol = col[1];
         }
       }
       
@@ -295,8 +297,9 @@ app.whenReady().then(async () => {
         return { success: false, error: '无法识别经纬度列' };
       }
       
-      // 读取坐标数据
-      const result = db.exec(`SELECT "${latCol}" as lat, "${lngCol}" as lng FROM "${bestTable}" WHERE "${latCol}" IS NOT NULL AND "${lngCol}" IS NOT NULL`);
+      // 读取坐标数据和时间
+      const timeField = timeCol ? `"${timeCol}" as time, ` : '';
+      const result = db.exec(`SELECT ${timeField}"${latCol}" as lat, "${lngCol}" as lng FROM "${bestTable}" WHERE "${latCol}" IS NOT NULL AND "${lngCol}" IS NOT NULL ORDER BY ${timeCol ? `"${timeCol}"` : 'ROWID'} ASC`);
       
       if (result.length === 0 || result[0].values.length === 0) {
         db.close();
@@ -304,11 +307,15 @@ app.whenReady().then(async () => {
       }
       
       const coords = [];
+      const hasTime = timeCol && result[0].columns.includes('time');
+      
       for (const row of result[0].values) {
-        const lat = parseFloat(row[0]);
-        const lng = parseFloat(row[1]);
+        const timeValue = hasTime ? row[0] : null;
+        const lat = parseFloat(hasTime ? row[1] : row[0]);
+        const lng = parseFloat(hasTime ? row[2] : row[1]);
+        
         if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-          coords.push({ lat, lng });
+          coords.push({ lat, lng, time: timeValue });
         }
       }
       
@@ -319,7 +326,8 @@ app.whenReady().then(async () => {
         tableName: bestTable,
         totalCount: result[0].values.length,
         validCount: coords.length,
-        coords: coords
+        coords: coords,
+        hasTime: hasTime
       };
       
     } catch (err) {
