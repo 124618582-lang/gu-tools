@@ -3,15 +3,94 @@ const path = require('path');
 const fs = require('fs');
 const https = require('https');
 const initSqlJs = require('sql.js');
+const { autoUpdater } = require('electron-updater');
 
 let mainWindow;
 
 // 当前版本
 const CURRENT_VERSION = '1.1.0';
-// 更新检查地址 - 使用 GitHub Raw
-const UPDATE_URL = 'https://raw.githubusercontent.com/gukanjian/gu-tools/main/version.json';
-// GitHub Releases 页面
-const GITHUB_RELEASES_URL = 'https://github.com/gukanjian/gu-tools/releases';
+// 更新检查地址 - 使用 GitHub
+const UPDATE_URL = 'https://raw.githubusercontent.com/124618582-lang/gu-tools/main/version.json';
+
+// 配置自动更新
+autoUpdater.setFeedURL({
+  provider: 'github',
+  owner: '124618582-lang',
+  repo: 'gu-tools',
+  token: process.env.GH_TOKEN
+});
+
+// 自动更新事件
+autoUpdater.on('checking-for-update', () => {
+  if (mainWindow) mainWindow.webContents.send('update-checking');
+});
+
+autoUpdater.on('update-available', (info) => {
+  if (mainWindow) {
+    dialog.showMessageBox(mainWindow, {
+      type: 'info',
+      title: '发现新版本',
+      message: `发现新版本 ${info.version}`,
+      detail: `当前版本: ${app.getVersion()}\n\n是否立即下载并安装？`,
+      buttons: ['立即更新', '稍后提醒'],
+      defaultId: 0
+    }).then((result) => {
+      if (result.response === 0) {
+        autoUpdater.downloadUpdate();
+      }
+    });
+    mainWindow.webContents.send('update-available', info);
+  }
+});
+
+autoUpdater.on('update-not-available', () => {
+  if (mainWindow) {
+    dialog.showMessageBox(mainWindow, {
+      type: 'info',
+      title: '检查更新',
+      message: '已是最新版本',
+      detail: `当前版本: ${app.getVersion()}`
+    });
+    mainWindow.webContents.send('update-not-available');
+  }
+});
+
+autoUpdater.on('download-progress', (progress) => {
+  if (mainWindow) {
+    mainWindow.webContents.send('update-progress', progress);
+  }
+});
+
+autoUpdater.on('update-downloaded', (info) => {
+  if (mainWindow) {
+    dialog.showMessageBox(mainWindow, {
+      type: 'info',
+      title: '更新已下载',
+      message: '新版本已下载完成',
+      detail: '应用将在重启后更新到新版本。',
+      buttons: ['立即重启', '稍后重启'],
+      defaultId: 0
+    }).then((result) => {
+      if (result.response === 0) {
+        autoUpdater.quitAndInstall();
+      }
+    });
+    mainWindow.webContents.send('update-downloaded', info);
+  }
+});
+
+autoUpdater.on('error', (err) => {
+  console.error('自动更新错误:', err);
+  if (mainWindow) {
+    dialog.showMessageBox(mainWindow, {
+      type: 'error',
+      title: '更新失败',
+      message: '检查更新时发生错误',
+      detail: err.message
+    });
+    mainWindow.webContents.send('update-error', err.message);
+  }
+});
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -35,6 +114,12 @@ function createWindow() {
 
   mainWindow.on('closed', () => {
     mainWindow = null;
+  });
+
+  // 窗口加载完成后检查更新
+  mainWindow.webContents.on('did-finish-load', () => {
+    // 可选：启动时自动检查更新
+    // setTimeout(() => autoUpdater.checkForUpdates(), 3000);
   });
 }
 
@@ -85,7 +170,7 @@ function createMenu() {
         {
           label: '检查更新',
           click: () => {
-            checkForUpdates(true);
+            autoUpdater.checkForUpdates();
           }
         },
         { type: 'separator' },
@@ -96,7 +181,7 @@ function createMenu() {
               type: 'info',
               title: '关于',
               message: 'GPS 可视化工具',
-              detail: `版本: ${CURRENT_VERSION}\n作者: 顾侃健\n\n用于可视化 GPS 轨迹数据`
+              detail: `版本: ${app.getVersion()}\n作者: 顾侃健\n\n用于可视化 GPS 轨迹数据`
             });
           }
         }
@@ -104,108 +189,6 @@ function createMenu() {
     }
   ];
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
-}
-
-// 检查更新
-async function checkForUpdates(showNoUpdate = false) {
-  if (!mainWindow) return;
-  
-  mainWindow.webContents.send('update-checking');
-  
-  try {
-    // 从 GitHub 获取版本信息
-    const updateInfo = await fetchUpdateInfo();
-    
-    if (!updateInfo) {
-      throw new Error('无法获取版本信息');
-    }
-    
-    // 比较版本号
-    const hasUpdate = compareVersions(updateInfo.version, CURRENT_VERSION) > 0;
-    
-    if (hasUpdate) {
-      // 有新版本
-      const platform = process.platform === 'darwin' ? 'mac' : 'win';
-      const downloadUrl = updateInfo.downloadUrl[platform] || GITHUB_RELEASES_URL;
-      
-      const result = await dialog.showMessageBox(mainWindow, {
-        type: 'info',
-        title: '发现新版本',
-        message: `发现新版本 ${updateInfo.version}`,
-        detail: `当前版本: ${CURRENT_VERSION}\n\n更新内容:\n${updateInfo.releaseNotes || '暂无说明'}`,
-        buttons: ['立即下载', '稍后提醒'],
-        defaultId: 0
-      });
-      
-      if (result.response === 0) {
-        shell.openExternal(downloadUrl);
-      }
-      
-      mainWindow.webContents.send('update-available', updateInfo);
-    } else {
-      // 已是最新
-      if (showNoUpdate) {
-        dialog.showMessageBox(mainWindow, {
-          type: 'info',
-          title: '检查更新',
-          message: '已是最新版本',
-          detail: `当前版本: ${CURRENT_VERSION}`
-        });
-      }
-      mainWindow.webContents.send('update-not-available');
-    }
-  } catch (err) {
-    console.error('检查更新失败:', err);
-    if (showNoUpdate) {
-      dialog.showMessageBox(mainWindow, {
-        type: 'warning',
-        title: '检查更新失败',
-        message: '无法连接到更新服务器',
-        detail: err.message
-      });
-    }
-    mainWindow.webContents.send('update-error', err.message);
-  }
-}
-
-// 从 GitHub 获取版本信息
-async function fetchUpdateInfo() {
-  return new Promise((resolve, reject) => {
-    https.get(UPDATE_URL, (res) => {
-      let data = '';
-      
-      res.on('data', (chunk) => {
-        data += chunk;
-      });
-      
-      res.on('end', () => {
-        try {
-          const info = JSON.parse(data);
-          resolve(info);
-        } catch (e) {
-          reject(e);
-        }
-      });
-    }).on('error', (err) => {
-      reject(err);
-    });
-  });
-}
-
-// 比较版本号（简单实现）
-function compareVersions(v1, v2) {
-  const parts1 = v1.split('.').map(Number);
-  const parts2 = v2.split('.').map(Number);
-  
-  for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
-    const p1 = parts1[i] || 0;
-    const p2 = parts2[i] || 0;
-    
-    if (p1 > p2) return 1;
-    if (p1 < p2) return -1;
-  }
-  
-  return 0;
 }
 
 // 初始化 sql.js
@@ -360,13 +343,10 @@ app.whenReady().then(async () => {
 
   // 检查更新 IPC
   ipcMain.handle('check-update', async () => {
-    await checkForUpdates(true);
+    autoUpdater.checkForUpdates();
   });
 
   createWindow();
-  
-  // 启动时自动检查更新（可选）
-  // setTimeout(() => checkForUpdates(false), 3000);
 });
 
 app.on('window-all-closed', () => app.quit());

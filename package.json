@@ -1,6 +1,6 @@
 {
   "name": "gps-visualizer",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "GPS 轨迹可视化工具",
   "main": "main.js",
   "scripts": {
@@ -8,7 +8,8 @@
     "build": "electron-builder",
     "build-mac": "electron-builder --mac",
     "build-win": "electron-builder --win",
-    "build-linux": "electron-builder --linux"
+    "build-linux": "electron-builder --linux",
+    "publish": "electron-builder --mac --win --publish always"
   },
   "keywords": [
     "gps",
@@ -33,18 +34,43 @@
       "renderer/**/*"
     ],
     "mac": {
-      "target": "dmg",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["arm64"]
+        },
+        {
+          "target": "zip",
+          "arch": ["arm64"]
+        }
+      ],
       "icon": "icon.icns"
     },
     "win": {
-      "target": "nsis",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "zip",
+          "arch": ["x64"]
+        }
+      ],
       "icon": "icon.ico"
     },
     "linux": {
       "target": "AppImage"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "124618582-lang",
+      "repo": "gu-tools",
+      "releaseType": "release"
     }
   },
   "dependencies": {
+    "electron-updater": "^6.8.3",
     "sql.js": "^1.14.1"
   }
 }
