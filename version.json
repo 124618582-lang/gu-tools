@@ -3,7 +3,7 @@
   "releaseDate": "2025-03-25",
   "releaseNotes": "初始版本\n- GPS 轨迹可视化\n- 支持 SQLite DB 和 CSV\n- 自动识别经纬度字段",
   "downloadUrl": {
-    "mac": "https://github.com/gukanjian/gu-tools/releases/download/v1.0.0/GPS-1.0.0-arm64.dmg",
-    "win": "https://github.com/gukanjian/gu-tools/releases/download/v1.0.0/GPS-1.0.0-Setup.exe"
+    "mac": "https://github.com/124618582-lang/gu-tools/releases/download/v1.0.0/GPS.%E5%8F%AF%E8%A7%86%E5%8C%96%E5%B7%A5%E5%85%B7-1.0.0-arm64.dmg",
+    "win": "https://github.com/124618582-lang/gu-tools/releases/download/v1.0.0/GPS.%E5%8F%AF%E8%A7%86%E5%8C%96%E5%B7%A5%E5%85%B7.Setup.1.0.0.exe"
   }
 }
