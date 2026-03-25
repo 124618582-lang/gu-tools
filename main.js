@@ -7,7 +7,7 @@ const initSqlJs = require('sql.js');
 let mainWindow;
 
 // 当前版本
-const CURRENT_VERSION = '1.4.0';
+const CURRENT_VERSION = '1.5.0';
 // 更新检查地址
 const UPDATE_URL = 'https://raw.githubusercontent.com/124618582-lang/gu-tools/main/version.json';
 // GitHub Releases 页面
@@ -460,4 +460,20 @@ app.whenReady().then(async () => {
   createWindow();
 });
 
-app.on('window-all-closed', () => app.quit());
+// 处理安装更新时退出应用
+app.on('before-quit', (event) => {
+  // 确保所有窗口关闭
+  if (mainWindow) {
+    mainWindow.destroy();
+    mainWindow = null;
+  }
+});
+
+app.on('window-all-closed', () => {
+  // macOS 上通常不退出应用，但这里我们需要退出以便安装更新
+  if (process.platform === 'darwin') {
+    app.quit();
+  } else {
+    app.quit();
+  }
+});

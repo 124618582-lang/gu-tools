@@ -1,9 +1,9 @@
 {
-  "version": "1.4.0",
+  "version": "1.5.0",
   "releaseDate": "2025-03-25",
-  "releaseNotes": "v1.4.0 性能优化\n- GPS 轨迹可视化\n- 支持 SQLite DB 和 CSV\n- 自动识别经纬度字段\n- ✅ 点击显示时间（性能优化，不点击不显示）\n- ✅ 自动下载更新",
+  "releaseNotes": "v1.5.0 优化\n- GPS 轨迹可视化\n- 支持 SQLite DB 和 CSV\n- 自动识别经纬度字段\n- 点击显示时间\n- ✅ 修复安装时未退出提示\n- ✅ 增大点击范围（20米半径）",
   "downloadUrl": {
-    "mac": "https://github.com/124618582-lang/gu-tools/releases/download/v1.4.0/GPS-Visualizer-1.4.0-arm64.dmg",
-    "win": "https://github.com/124618582-lang/gu-tools/releases/download/v1.4.0/GPS-Visualizer-1.4.0-x64.exe"
+    "mac": "https://github.com/124618582-lang/gu-tools/releases/download/v1.5.0/GPS-Visualizer-1.5.0-arm64.dmg",
+    "win": "https://github.com/124618582-lang/gu-tools/releases/download/v1.5.0/GPS-Visualizer-1.5.0-x64.exe"
   }
 }

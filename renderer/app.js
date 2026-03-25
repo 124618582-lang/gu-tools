@@ -279,6 +279,7 @@ function addMarker(lat, lng, options = {}) {
         borderColor = '#2980b9';
     }
     
+    // 创建可见的标记点
     const marker = L.circleMarker([lat, lng], {
         radius: isFirst || isLast ? 8 : 5,
         fillColor: color,
@@ -288,10 +289,19 @@ function addMarker(lat, lng, options = {}) {
         fillOpacity: 0.8
     }).addTo(markerGroup);
     
+    // 创建更大的透明点击区域，提高点击精确度
+    const clickArea = L.circle([lat, lng], {
+        radius: 20, // 20米半径的点击区域
+        fillColor: 'transparent',
+        color: 'transparent',
+        weight: 0,
+        fillOpacity: 0
+    }).addTo(markerGroup);
+    
     const type = isFirst ? '起点' : (isLast ? '终点' : '途经点');
     
-    // 只在点击时显示时间和详细信息
-    marker.on('click', function() {
+    // 点击事件处理函数
+    const handleClick = function() {
         const timeInfo = time ? `<br><strong>时间:</strong> ${time}` : '';
         const popupContent = `
             <div style="font-size: 13px; line-height: 1.6;">
@@ -302,10 +312,24 @@ function addMarker(lat, lng, options = {}) {
                 ${timeInfo}
             </div>
         `;
-        this.bindPopup(popupContent).openPopup();
+        marker.bindPopup(popupContent).openPopup();
+    };
+    
+    // 绑定点击事件到可见标记
+    marker.on('click', handleClick);
+    // 绑定点击事件到透明点击区域
+    clickArea.on('click', handleClick);
+    
+    // 鼠标悬停效果
+    marker.on('mouseover', function() {
+        this.setStyle({ weight: 4 });
+    });
+    marker.on('mouseout', function() {
+        this.setStyle({ weight: 2 });
     });
     
     markers.push(marker);
+    markers.push(clickArea);
     return marker;
 }
 
