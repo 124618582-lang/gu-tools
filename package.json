@@ -1,6 +1,6 @@
 {
   "name": "gps-visualizer",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "description": "GPS 轨迹可视化工具",
   "main": "main.js",
   "scripts": {

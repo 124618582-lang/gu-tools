@@ -289,9 +289,9 @@ function addMarker(lat, lng, options = {}) {
         fillOpacity: 0.8
     }).addTo(markerGroup);
     
-    // 创建更大的透明点击区域，提高点击精确度
+    // 创建更大的透明点击区域，提高点击精确度（食指范围约50米）
     const clickArea = L.circle([lat, lng], {
-        radius: 20, // 20米半径的点击区域
+        radius: 50, // 50米半径的点击区域（食指范围）
         fillColor: 'transparent',
         color: 'transparent',
         weight: 0,

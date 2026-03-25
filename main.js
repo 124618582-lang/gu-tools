@@ -7,7 +7,7 @@ const initSqlJs = require('sql.js');
 let mainWindow;
 
 // 当前版本
-const CURRENT_VERSION = '1.6.0';
+const CURRENT_VERSION = '1.7.0';
 // 更新检查地址
 const UPDATE_URL = 'https://raw.githubusercontent.com/124618582-lang/gu-tools/main/version.json';
 // GitHub Releases 页面
@@ -138,8 +138,29 @@ async function checkForUpdates(showNoUpdate = false) {
       });
       
       if (result.response === 0) {
-        // 下载更新到下载文件夹
-        await downloadUpdate(updateInfo, platform);
+        // 先提示用户应用将退出
+        const quitResult = await dialog.showMessageBox(mainWindow, {
+          type: 'warning',
+          title: '即将退出应用',
+          message: '下载更新需要退出当前应用',
+          detail: '点击"确定"后应用将自动关闭，然后开始下载更新。\n下载完成后请手动安装新版本。',
+          buttons: ['确定退出', '取消'],
+          defaultId: 0
+        });
+        
+        if (quitResult.response === 0) {
+          // 显示下载中提示
+          mainWindow.webContents.send('update-checking');
+          
+          // 延迟一下确保提示显示
+          setTimeout(async () => {
+            // 强制退出应用
+            forceQuit();
+            
+            // 使用系统命令下载（应用退出后后台下载）
+            await downloadInBackground(updateInfo, platform);
+          }, 500);
+        }
       }
       
       mainWindow.webContents.send('update-available', updateInfo);
@@ -219,6 +240,32 @@ async function downloadUpdate(updateInfo, platform) {
     });
     shell.openExternal(GITHUB_RELEASES_URL);
   }
+}
+
+// 后台下载（应用退出后）
+async function downloadInBackground(updateInfo, platform) {
+  const downloadUrl = updateInfo.downloadUrl[platform];
+  if (!downloadUrl) return;
+  
+  const fileName = path.basename(downloadUrl);
+  const downloadPath = path.join(app.getPath('downloads'), fileName);
+  
+  // 使用 curl 命令后台下载
+  const { spawn } = require('child_process');
+  const curl = spawn('curl', ['-L', '-o', downloadPath, downloadUrl], {
+    detached: true,
+    stdio: 'ignore'
+  });
+  
+  curl.unref();
+  
+  // 下载完成后打开文件夹
+  curl.on('close', (code) => {
+    if (code === 0) {
+      // 下载成功，使用 osascript 显示通知
+      spawn('osascript', ['-e', `display notification "新版本已下载完成" with title "GPS可视化工具"`], { detached: true });
+    }
+  });
 }
 
 // 下载文件
@@ -493,15 +540,25 @@ app.whenReady().then(async () => {
 
 // 强制退出应用（用于更新）
 function forceQuit() {
+  console.log('Force quitting application...');
+  
   // 关闭所有窗口
   if (mainWindow) {
     mainWindow.destroy();
     mainWindow = null;
   }
-  // 延迟退出确保资源释放
+  
+  // 清理所有资源
+  app.removeAllListeners('window-all-closed');
+  
+  // 使用更强制的方式退出
   setTimeout(() => {
-    app.exit(0);
-  }, 500);
+    app.quit();
+    // 如果 quit 不起作用，强制退出
+    setTimeout(() => {
+      process.exit(0);
+    }, 500);
+  }, 100);
 }
 
 // 处理安装更新时退出应用
