@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPS 可视化工具</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; height: 100vh; display: flex; flex-direction: column; background: #f5f5f5; }
+        #header { background: #2c3e50; color: white; padding: 12px 20px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        #header h1 { font-size: 16px; font-weight: 500; display: flex; align-items: center; gap: 8px; }
+        .input-group { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 250px; }
+        #gpsInput { flex: 1; padding: 8px 12px; border: none; border-radius: 4px; font-size: 13px; }
+        button { padding: 8px 14px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; transition: all 0.2s; white-space: nowrap; }
+        button:hover { background: #2980b9; }
+        button.secondary { background: #7f8c8d; }
+        button.secondary:hover { background: #6c7a7d; }
+        button.danger { background: #e74c3c; }
+        button.danger:hover { background: #c0392b; }
+        button.success { background: #27ae60; }
+        button.success:hover { background: #219a52; }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
+        #main { flex: 1; display: flex; overflow: hidden; }
+        #sidebar { width: 300px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; overflow: hidden; }
+        #fileInfo { padding: 15px; background: #f8f9fa; border-bottom: 1px solid #ddd; }
+        #fileInfo h3 { font-size: 13px; color: #666; margin-bottom: 10px; text-transform: uppercase; }
+        .file-item { padding: 10px; background: white; border-radius: 4px; border: 1px solid #e0e0e0; margin-bottom: 8px; }
+        .file-item .name { font-weight: 500; font-size: 13px; color: #333; word-break: break-all; }
+        .file-item .meta { font-size: 11px; color: #999; margin-top: 4px; }
+        .file-item .status { font-size: 11px; margin-top: 6px; padding: 4px 8px; border-radius: 3px; display: inline-block; }
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .status.loading { background: #fff3cd; color: #856404; }
+        #stats { padding: 15px; flex: 1; overflow-y: auto; }
+        #stats h3 { font-size: 13px; color: #666; margin-bottom: 10px; text-transform: uppercase; }
+        .stat-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; font-size: 13px; }
+        .stat-item:last-child { border-bottom: none; }
+        .stat-item .label { color: #666; }
+        .stat-item .value { font-weight: 500; color: #333; }
+        #mapContainer { flex: 1; position: relative; }
+        #map { width: 100%; height: 100%; }
+        #info { background: white; padding: 10px 20px; font-size: 13px; color: #555; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #ddd; }
+        .legend { display: flex; gap: 15px; }
+        .legend-item { display: flex; align-items: center; gap: 5px; font-size: 12px; }
+        .legend-color { width: 12px; height: 12px; border-radius: 50%; }
+        .legend-line { width: 20px; height: 3px; border-radius: 2px; }
+        .popup-content { font-size: 13px; line-height: 1.5; }
+        .popup-content strong { color: #2c3e50; }
+        #progressOverlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center; }
+        #progressBox { background: white; padding: 30px 50px; border-radius: 8px; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+        #progressBox h3 { margin-bottom: 10px; color: #2c3e50; }
+        #progressText { color: #666; font-size: 14px; }
+        .spinner { width: 40px; height: 40px; border: 4px solid #e0e0e0; border-top-color: #3498db; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 15px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .quick-actions { padding: 15px; border-top: 1px solid #ddd; background: #f8f9fa; }
+        .quick-actions h3 { font-size: 13px; color: #666; margin-bottom: 10px; }
+        .quick-actions button { width: 100%; margin-bottom: 8px; text-align: left; display: flex; align-items: center; gap: 8px; }
+    </style>
+</head>
+<body>
+    <div id="header">
+        <h1>📍 GPS 可视化工具</h1>
+        <div class="input-group">
+            <input type="text" id="gpsInput" placeholder="输入 GPS 坐标，如: 34.4154,109.0364" />
+            <button onclick="addPoint()">添加</button>
+            <button class="secondary" onclick="addMultiple()">批量</button>
+            <button class="success" id="dbBtn" onclick="openDbFile()">🗄️ 打开 DB</button>
+            <button class="secondary" onclick="openCsvFile()">📁 打开 CSV</button>
+            <button class="secondary" onclick="locateMe()">📍 定位</button>
+            <button class="danger" onclick="clearAll()">清空</button>
+        </div>
+    </div>
+    
+    <div id="main">
+        <div id="sidebar">
+            <div id="fileInfo">
+                <h3>📂 当前文件</h3>
+                <div id="fileList">
+                    <div style="color: #999; font-size: 13px; text-align: center; padding: 20px;">
+                        暂无文件<br><small>点击"打开 DB"或"打开 CSV"</small>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="stats">
+                <h3>📊 统计信息</h3>
+                <div class="stat-item"><span class="label">总点数</span><span class="value" id="totalPoints">0</span></div>
+                <div class="stat-item"><span class="label">轨迹长度</span><span class="value" id="trackLength">-</span></div>
+                <div class="stat-item"><span class="label">纬度范围</span><span class="value" id="latRange">-</span></div>
+                <div class="stat-item"><span class="label">经度范围</span><span class="value" id="lngRange">-</span></div>
+            </div>
+            
+            <div class="quick-actions">
+                <h3>⚡ 快捷操作</h3>
+                <button class="secondary" onclick="fitBounds()">🔍 适应视图</button>
+                <button class="secondary" onclick="exportData()">💾 导出数据</button>
+                <button class="secondary" onclick="checkForUpdates()" id="updateBtn">🔄 检查更新</button>
+            </div>
+        </div>
+        
+        <div id="mapContainer">
+            <div id="map"></div>
+        </div>
+    </div>
+    
+    <div id="info">
+        <span id="pointCount">已添加 0 个点</span>
+        <div class="legend">
+            <div class="legend-item"><div class="legend-color" style="background: #2ecc71;"></div><span>起点</span></div>
+            <div class="legend-item"><div class="legend-color" style="background: #3498db;"></div><span>途经点</span></div>
+            <div class="legend-item"><div class="legend-color" style="background: #e74c3c;"></div><span>终点</span></div>
+            <div class="legend-item"><div class="legend-line" style="background: #0066ff;"></div><span>轨迹</span></div>
+        </div>
+    </div>
+
+    <div id="progressOverlay">
+        <div id="progressBox">
+            <div class="spinner"></div>
+            <h3 id="progressTitle">正在读取...</h3>
+            <div id="progressText">请稍候</div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
