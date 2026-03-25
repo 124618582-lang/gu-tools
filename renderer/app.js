@@ -438,17 +438,35 @@ if (window.electronAPI) {
     // 监听更新事件
     window.electronAPI.onUpdateChecking(() => {
         console.log('正在检查更新...');
+        showProgress('正在检查更新...', '请稍候');
     });
     
     window.electronAPI.onUpdateAvailable((event, info) => {
         console.log('发现新版本:', info);
+        hideProgress();
     });
     
     window.electronAPI.onUpdateNotAvailable(() => {
         console.log('已是最新版本');
+        hideProgress();
     });
     
     window.electronAPI.onUpdateError((event, error) => {
         console.error('检查更新失败:', error);
+        hideProgress();
+    });
+    
+    // 监听下载进度
+    window.electronAPI.onUpdateDownloading((event, data) => {
+        showProgress('正在下载更新...', `进度: 0%`);
+    });
+    
+    window.electronAPI.onUpdateProgress((event, data) => {
+        updateProgress(`进度: ${data.percent}%`);
+    });
+    
+    window.electronAPI.onUpdateDownloaded((event, data) => {
+        hideProgress();
+        console.log('下载完成:', data.path);
     });
 }
