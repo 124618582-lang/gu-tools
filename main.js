@@ -7,7 +7,7 @@ const initSqlJs = require('sql.js');
 let mainWindow;
 
 // 当前版本
-const CURRENT_VERSION = '1.5.0';
+const CURRENT_VERSION = '1.6.0';
 // 更新检查地址
 const UPDATE_URL = 'https://raw.githubusercontent.com/124618582-lang/gu-tools/main/version.json';
 // GitHub Releases 页面
@@ -193,12 +193,19 @@ async function downloadUpdate(updateInfo, platform) {
       type: 'info',
       title: '下载完成',
       message: '新版本已下载完成',
-      detail: `文件位置: ${downloadPath}\n\n请手动安装新版本。`,
-      buttons: ['打开下载文件夹', '稍后安装'],
+      detail: `文件位置: ${downloadPath}\n\n是否立即退出并安装新版本？`,
+      buttons: ['立即退出并安装', '打开下载文件夹', '稍后安装'],
       defaultId: 0
     });
     
     if (result.response === 0) {
+      // 打开下载文件夹
+      shell.showItemInFolder(downloadPath);
+      // 延迟后强制退出应用
+      setTimeout(() => {
+        forceQuit();
+      }, 1000);
+    } else if (result.response === 1) {
       shell.showItemInFolder(downloadPath);
     }
     
@@ -220,45 +227,69 @@ function downloadFile(url, dest, onProgress) {
     const file = fs.createWriteStream(dest);
     let downloadedBytes = 0;
     let totalBytes = 0;
+    let lastProgress = 0;
     
-    https.get(url, { headers: { 'User-Agent': 'GPS-Visualizer' } }, (response) => {
-      if (response.statusCode === 302 || response.statusCode === 301) {
-        // 重定向
-        downloadFile(response.headers.location, dest, onProgress)
-          .then(resolve)
-          .catch(reject);
-        return;
-      }
-      
-      if (response.statusCode !== 200) {
-        reject(new Error(`HTTP ${response.statusCode}`));
-        return;
-      }
-      
-      totalBytes = parseInt(response.headers['content-length'], 10) || 0;
-      
-      response.on('data', (chunk) => {
-        downloadedBytes += chunk.length;
-        if (totalBytes > 0 && onProgress) {
-          onProgress(Math.round((downloadedBytes / totalBytes) * 100));
+    // 确保 URL 是字符串
+    const downloadUrl = typeof url === 'string' ? url : url.href || url.toString();
+    
+    // 使用 follow-redirects 或手动处理重定向
+    const doDownload = (currentUrl) => {
+      https.get(currentUrl, { headers: { 'User-Agent': 'GPS-Visualizer' } }, (response) => {
+        // 处理重定向
+        if (response.statusCode === 302 || response.statusCode === 301) {
+          const redirectUrl = response.headers.location;
+          console.log('Redirect to:', redirectUrl);
+          doDownload(redirectUrl);
+          return;
         }
-      });
-      
-      response.pipe(file);
-      
-      file.on('finish', () => {
-        file.close();
-        resolve();
-      });
-      
-      file.on('error', (err) => {
+        
+        if (response.statusCode !== 200) {
+          reject(new Error(`HTTP ${response.statusCode}`));
+          return;
+        }
+        
+        totalBytes = parseInt(response.headers['content-length'], 10) || 0;
+        console.log('Total bytes:', totalBytes);
+        
+        // 立即发送初始进度
+        if (onProgress) {
+          onProgress(0);
+        }
+        
+        response.on('data', (chunk) => {
+          downloadedBytes += chunk.length;
+          if (totalBytes > 0 && onProgress) {
+            const progress = Math.round((downloadedBytes / totalBytes) * 100);
+            // 每5%或首次更新进度，避免过于频繁
+            if (progress !== lastProgress && (progress === 0 || progress === 100 || progress - lastProgress >= 5)) {
+              lastProgress = progress;
+              onProgress(progress);
+            }
+          }
+        });
+        
+        response.pipe(file);
+        
+        file.on('finish', () => {
+          file.close();
+          // 确保发送100%进度
+          if (onProgress && lastProgress < 100) {
+            onProgress(100);
+          }
+          resolve();
+        });
+        
+        file.on('error', (err) => {
+          fs.unlink(dest, () => {});
+          reject(err);
+        });
+      }).on('error', (err) => {
         fs.unlink(dest, () => {});
         reject(err);
       });
-    }).on('error', (err) => {
-      fs.unlink(dest, () => {});
-      reject(err);
-    });
+    };
+    
+    doDownload(downloadUrl);
   });
 }
 
@@ -460,6 +491,19 @@ app.whenReady().then(async () => {
   createWindow();
 });
 
+// 强制退出应用（用于更新）
+function forceQuit() {
+  // 关闭所有窗口
+  if (mainWindow) {
+    mainWindow.destroy();
+    mainWindow = null;
+  }
+  // 延迟退出确保资源释放
+  setTimeout(() => {
+    app.exit(0);
+  }, 500);
+}
+
 // 处理安装更新时退出应用
 app.on('before-quit', (event) => {
   // 确保所有窗口关闭
@@ -470,10 +514,5 @@ app.on('before-quit', (event) => {
 });
 
 app.on('window-all-closed', () => {
-  // macOS 上通常不退出应用，但这里我们需要退出以便安装更新
-  if (process.platform === 'darwin') {
-    app.quit();
-  } else {
-    app.quit();
-  }
+  app.quit();
 });

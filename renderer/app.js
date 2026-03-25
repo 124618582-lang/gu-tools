@@ -484,11 +484,12 @@ if (window.electronAPI) {
     
     // 监听下载进度
     window.electronAPI.onUpdateDownloading((event, data) => {
-        showProgress('正在下载更新...', `进度: 0%`);
+        showProgress('正在下载更新...', '准备下载...');
     });
     
     window.electronAPI.onUpdateProgress((event, data) => {
-        updateProgress(`进度: ${data.percent}%`);
+        const percent = data.percent || 0;
+        updateProgress(`下载进度: ${percent}% ${percent < 100 ? '⏳' : '✓'}`);
     });
     
     window.electronAPI.onUpdateDownloaded((event, data) => {
